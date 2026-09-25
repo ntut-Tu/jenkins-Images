@@ -43,7 +43,7 @@ jobs:
                   paths = subprocess.check_output([
                       'git', 'diff', '--name-only', '--no-renames', '-z', before, 'HEAD', '--',
                   ]).decode().split('\0')
-                  shared = any(path in {'.dockerignore', '.github/workflows/images.yaml'} for path in paths)
+                  shared = any(path in {'.dockerignore', '.github/workflows/images.yaml', 'pyproject.toml', 'uv.lock'} for path in paths)
                   images = [name for name in images if shared or any(
                       path.startswith((name + '/', 'tools/', 'tests/') if name == 'controller' else (name + '/',))
                       for path in paths
@@ -66,7 +66,11 @@ jobs:
         image: ${{ fromJSON(needs.changes.outputs.images) }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m unittest discover -s tests -v
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.19"
+          python-version: "3.12"
+      - run: uv run --locked python -m unittest discover -s tests -v
       - uses: docker/setup-buildx-action@v3
       - name: Image name
         id: name

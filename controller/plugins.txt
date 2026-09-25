@@ -3,9 +3,9 @@ job-dsl
 workflow-aggregator
 git
 junit
-kubernetes
 matrix-auth
 credentials-binding
 cloudbees-folder
 timestamper
 docker-workflow
+authorize-project
