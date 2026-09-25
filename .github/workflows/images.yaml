@@ -11,14 +11,59 @@ concurrency:
   group: images-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      images: ${{ steps.select.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select images affected by a main push
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import subprocess
+
+          images = ['controller', 'agent']
+          if os.environ['EVENT_NAME'] == 'push' and os.environ['EVENT_REF'] == 'refs/heads/main':
+              before = os.environ.get('BEFORE_SHA', '')
+              available = bool(before and set(before) != {'0'}) and subprocess.run(
+                  ['git', 'cat-file', '-e', before + '^{commit}'],
+                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+              ).returncode == 0
+              if available:
+                  # Compare the entire push, including both sides of renames.
+                  paths = subprocess.check_output([
+                      'git', 'diff', '--name-only', '--no-renames', '-z', before, 'HEAD', '--',
+                  ]).decode().split('\0')
+                  shared = any(path in {'.dockerignore', '.github/workflows/images.yaml'} for path in paths)
+                  images = [name for name in images if shared or any(
+                      path.startswith((name + '/', 'tools/', 'tests/') if name == 'controller' else (name + '/',))
+                      for path in paths
+                  )]
+              else:
+                  print('No previous commit available; build both images for the initial or rewritten history.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('images=' + json.dumps(images, separators=(',', ':')) + '\n')
+          print('Selected images:', images)
+          PYTHON
   images:
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     strategy:
       matrix:
-        image: [controller, agent]
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s tests -v

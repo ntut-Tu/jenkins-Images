@@ -19,7 +19,16 @@ Agent 的 Docker CLI 需要可用的 Docker daemon，連線與權限由 config r
 
 ## GHCR
 
-GitHub Actions matrix 僅含 controller、agent。PR／main／手動事件建置測試；v* tag 才發布，保留來源 SHA tag、provenance、SBOM。版本 tag 不應覆寫。
+GitHub Actions 在 main push 時先比較此次 push 前後的完整差異，再只建置受影響的映像：
+
+| 變更路徑 | 建置映像 |
+| --- | --- |
+| controller/**、tools/**、tests/** | controller（包含外掛 lock、更新工具與其測試） |
+| agent/** | agent |
+| .dockerignore、.github/workflows/images.yaml | controller、agent |
+| 只有 README 或其他無關檔案 | 不建置映像，只執行變更判斷 job |
+
+刪除與跨目錄重新命名也計入；首次 push 或無法取得舊 commit 時建置兩者，避免漏掉建置。PR、手動執行及 v* tag 保留建置兩者的行為；只有 v* tag ref 才發布 GHCR，保留來源 SHA tag、provenance、SBOM。版本 tag 不應覆寫。
 
 ```text
 ghcr.io/<小寫 GitHub owner>/pdd-jenkins-controller:<tag>
