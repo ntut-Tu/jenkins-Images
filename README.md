@@ -28,7 +28,7 @@ GitHub Actions 在 main push 時先比較此次 push 前後的完整差異，再
 | .dockerignore、.github/workflows/images.yaml | controller、agent |
 | 只有 README 或其他無關檔案 | 不建置映像，只執行變更判斷 job |
 
-刪除與跨目錄重新命名也計入；首次 push 或無法取得舊 commit 時建置兩者，避免漏掉建置。PR、手動執行及 v* tag 保留建置兩者的行為；只有 v* tag ref 才發布 GHCR，保留來源 SHA tag、provenance、SBOM。版本 tag 不應覆寫。
+刪除與跨目錄重新命名也計入；首次 push 或無法取得舊 commit 時建置兩者，避免漏掉建置。PR、手動執行及 v* tag 保留建置兩者的行為；main push 的受影響映像通過測試後會發布 GHCR，標籤為 `v1.0.<GitHub Actions run_number>`（例如 `v1.0.42`）；v* tag ref 發布對應版本標籤，不產生 hash 標籤。PR 及在 main 上手動執行僅建置測試，不發布。保留 provenance、SBOM；自動版本以 workflow 執行序號遞增，PR 或未建置映像的執行也會消耗序號，因此版號可能跳號；重跑同一次執行沿用相同版本。部署可使用版本標籤或 registry digest。版本 tag 不應覆寫。
 
 ```text
 ghcr.io/<小寫 GitHub owner>/pdd-jenkins-controller:<tag>

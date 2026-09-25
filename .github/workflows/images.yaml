@@ -91,7 +91,7 @@ jobs:
             docker run --rm --entrypoint bash jenkins-test:agent -ec 'java -version; git --version; docker --version; test -z "$(command -v python3)"; test "$(id -u)" != 0'
           fi
       - uses: docker/login-action@v3
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -102,10 +102,10 @@ jobs:
           images: ${{ steps.name.outputs.image }}
           flavor: latest=false
           tags: |
+            type=raw,value=v1.0.${{ github.run_number }},enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag
-            type=sha,format=long
       - name: Publish tested image
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v6
         with:
           context: .
